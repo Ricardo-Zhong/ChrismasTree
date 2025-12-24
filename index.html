@@ -3,8 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Christmas Tree</title>
-    <!-- Re-Import Elegant Font -->
+    <title>Christmas Tree Assembly</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap"
       rel="stylesheet" />
@@ -29,46 +28,133 @@
         padding: 10px 20px;
         border-radius: 8px;
         transition: opacity 0.5s;
+        z-index: 200;
       }
-      /* New Greeting Text Style */
       #greeting {
         position: absolute;
-        top: 8%; /* Position at the top */
+        top: 8%;
         left: 0;
         width: 100%;
         text-align: center;
-        color: #ffffff; /* Changed to White */
-        /* Changed back to Great Vibes */
+        color: #ffffff;
         font-family: "Great Vibes", cursive;
-        /* Restored larger font size */
         font-size: clamp(3rem, 8vw, 6rem);
         font-weight: normal;
-        /* Ice Blue Glow Effect */
         text-shadow: 0 0 10px rgba(255, 255, 255, 0.8),
-          /* Inner White Glow */ 0 0 20px rgba(173, 216, 230, 0.6),
-          /* Light Blue (LightBlue) */ 0 0 40px rgba(135, 206, 250, 0.4); /* Outer Blue (LightSkyBlue) */
+          0 0 20px rgba(173, 216, 230, 0.6), 0 0 40px rgba(135, 206, 250, 0.4);
         z-index: 100;
-        pointer-events: none; /* Let clicks pass through to the 3D scene */
+        pointer-events: none;
         opacity: 0; /* Start invisible */
-        transition: opacity 3s ease-in-out; /* Slow fade in */
+        transition: opacity 3s ease-in-out;
         letter-spacing: 2px;
+      }
+
+      .vinyl-mini {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        position: absolute;
+        bottom: 5%;
+        left: 2%;
+        cursor: pointer;
+        /* 缩小阴影，使其看起来更精致 */
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+        border: 1px solid #000;
+
+        /* --- 针对小尺寸优化的纹理 --- */
+        background: 
+            /* 1. 反光层 (增强透明度，避免在小尺寸下遮挡纹理) */ linear-gradient(
+            135deg,
+            transparent 40%,
+            rgba(255, 255, 255, 0.3) 50%,
+            transparent 60%
+          ),
+          /* 2. 中心红色标签 (稍微调大一点比例，不然看不清) */
+            radial-gradient(circle, #169fc9 35%, transparent 36%),
+          /* 3. 黑胶纹理 (线条间距调整为 1px-2px，避免摩尔纹干扰) */
+            repeating-radial-gradient(#111 0, #111 1px, #333 2px);
+
+        /* 动画设置 */
+        animation: spin 3s linear infinite; /* 小尺寸转快一点看起来更有活力 */
+        animation-play-state: paused;
+      }
+
+      /* 中间的孔 (相应缩小) */
+      .vinyl-mini::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 6px; /* 调整为 6px */
+        height: 6px;
+        background-color: #fff; /* 假设背景是白色，如果是深色背景请修改这里 */
+        border-radius: 50%;
+        border: 1px solid #ddd;
+      }
+
+      /* 旋转动画关键帧 */
+      @keyframes spin {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* 播放状态 */
+      .vinyl-mini.playing {
+        animation-play-state: running;
       }
     </style>
   </head>
   <body>
-    <div id="loading">Loading Christmas Magic...</div>
-    <!-- The Greeting Text -->
+    <div id="loading">Gathering Particles...</div>
     <div id="greeting">Merry Christmas</div>
+    <audio id="bgm" src="bgm.mp3" loop></audio>
 
+    <div class="vinyl-mini" id="discBtn" onclick="toggleMusic()"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
+      var audio = document.getElementById("bgm");
+      var cdBtn = document.getElementById("discBtn");
+      function toggleMusic() {
+        if (audio.paused) {
+          audio.play();
+          // 添加 .playing 类，开始旋转
+          cdBtn.classList.add("playing");
+        } else {
+          audio.pause();
+          // 移除 .playing 类，停止旋转
+          cdBtn.classList.remove("playing");
+        }
+      }
+      function playMusic() {
+        audio
+          .play()
+          .then(() => {
+            // 播放成功后，移除监听器，避免每次点击都触发
+            document.removeEventListener("click", playMusic);
+            document.removeEventListener("touchstart", playMusic); // 兼容手机触摸
+            cdBtn.classList.add("playing");
+            // 如果你有旋转动画，记得在这里加上 class
+            // document.getElementById("musicBtn").classList.add("playing");
+          })
+          .catch((error) => {
+            console.log("播放被阻止:", error);
+          });
+      }
+
+      // 监听整个文档的点击或触摸事件
+      // { once: true } 表示事件只触发一次，触发后自动销毁，节省性能
+      document.addEventListener("click", playMusic, { once: true });
+      document.addEventListener("touchstart", playMusic, { once: true });
       // ------------------------------------------------------------------
       // Setup Scene, Camera, Renderer
       // ------------------------------------------------------------------
       const scene = new THREE.Scene();
-      // Darker background to make Aurora pop
       scene.background = new THREE.Color(0x000103);
-      // Fog blends the floor into the distance
       scene.fog = new THREE.FogExp2(0x000103, 0.01);
 
       const camera = new THREE.PerspectiveCamera(
@@ -103,12 +189,9 @@
       const auroraFragmentShader = `
         uniform float uTime;
         varying vec2 vUv;
-
-        // Simple noise function
         float random(vec2 st) {
             return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
         }
-
         float noise(vec2 st) {
             vec2 i = floor(st);
             vec2 f = fract(st);
@@ -119,48 +202,22 @@
             vec2 u = f * f * (3.0 - 2.0 * f);
             return mix(a, b, u.x) + (c - a)* u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
         }
-
         void main() {
             vec2 uv = vUv;
-            
-            // Create wavy curtain effect
             float time = uTime * 0.2;
-            
-            // Displace X based on Y and Time to make it wave
             float wave = sin(uv.x * 6.0 + time) * 0.1 + sin(uv.x * 12.0 + time * 1.5) * 0.05;
-            float line = abs(0.5 / (uv.y + wave - 0.5)); // Glow line
-            
-            // Generate Aurora Noise pattern
             float n = noise(vec2(uv.x * 4.0 + time, uv.y * 2.0));
-            
-            // Vertical fade (only appear at top)
             float alpha = smoothstep(0.3, 0.9, uv.y);
-            
-            // Vertical streaks
-            float streaks = sin(uv.x * 20.0 + time + n * 5.0);
-            streaks = smoothstep(0.4, 0.6, streaks);
-            
-            // Color Palette
-            vec3 colorGreen = vec3(0.1, 1.0, 0.6); // Aurora Green
-            vec3 colorPurple = vec3(0.6, 0.2, 1.0); // Aurora Purple
-            
-            // Mix colors based on height and noise
+            vec3 colorGreen = vec3(0.1, 1.0, 0.6);
+            vec3 colorPurple = vec3(0.6, 0.2, 1.0);
             vec3 finalColor = mix(colorGreen, colorPurple, uv.y * 0.8 + n * 0.2);
-            
-            // Combine alpha masks
             float intensity = alpha * (0.3 + 0.5 * n);
-            
-            // Add extra glow band
             intensity += smoothstep(0.8, 0.9, n) * alpha * 0.5;
-
             gl_FragColor = vec4(finalColor, intensity * 0.6); 
         }
       `;
 
-      const auroraUniforms = {
-        uTime: { value: 0 },
-      };
-
+      const auroraUniforms = { uTime: { value: 0 } };
       const auroraMaterial = new THREE.ShaderMaterial({
         vertexShader: auroraVertexShader,
         fragmentShader: auroraFragmentShader,
@@ -168,10 +225,9 @@
         transparent: true,
         blending: THREE.AdditiveBlending,
         side: THREE.DoubleSide,
-        depthWrite: false, // Don't block stars
+        depthWrite: false,
       });
 
-      // UPDATED: Significantly increased size to cover full screen
       const auroraGeometry = new THREE.PlaneGeometry(400, 200, 64, 64);
       const auroraMesh = new THREE.Mesh(auroraGeometry, auroraMaterial);
       auroraMesh.position.set(0, 20, -30);
@@ -180,24 +236,20 @@
       // ------------------------------------------------------------------
       // Materials
       // ------------------------------------------------------------------
-      const colBlack = new THREE.Color(0x1a1a1a); // Soft Charcoal Black
+      const colBlack = new THREE.Color(0x1a1a1a);
       const colPureWhite = new THREE.Color(0xffffff);
-      const colDarkBlue = new THREE.Color(0x446699); // Steel Blue
-
-      // New Colors for 2D Shapes
+      const colDarkBlue = new THREE.Color(0x446699);
       const colGrey = new THREE.Color(0xaaaaaa);
       const colLightBlue = new THREE.Color(0xaaddff);
-
-      // Sequin Colors (Cold Palette for 80% of sequins)
-      const sequinColors = [
-        new THREE.Color(0xffffff), // Silver/White
-        new THREE.Color(0xaaddff), // Light Blue
-        new THREE.Color(0x88ccff), // Deep Sky Blue
-        new THREE.Color(0xccccff), // Pale Lavender
-        new THREE.Color(0xdddddd), // Greyish Silver
-      ];
-      // Black Sequin Color (Dark Grey for metallic visibility)
       const colSequinBlack = new THREE.Color(0x111111);
+
+      const sequinColors = [
+        new THREE.Color(0xffffff),
+        new THREE.Color(0xaaddff),
+        new THREE.Color(0x88ccff),
+        new THREE.Color(0xccccff),
+        new THREE.Color(0xdddddd),
+      ];
 
       const particleMaterial = new THREE.MeshStandardMaterial({
         roughness: 0.2,
@@ -207,7 +259,6 @@
         emissiveIntensity: 0.6,
       });
 
-      // Material for 2D shapes (DoubleSide is essential)
       const material2D = new THREE.MeshStandardMaterial({
         roughness: 0.2,
         metalness: 0.1,
@@ -216,12 +267,11 @@
         emissiveIntensity: 0.5,
       });
 
-      // --- FROSTED GLASS MATERIAL ---
       const materialGlass = new THREE.MeshPhysicalMaterial({
         color: 0xffffff,
         metalness: 0.1,
-        roughness: 0.5, // Frosted look
-        transmission: 0.9, // Glass-like
+        roughness: 0.5,
+        transmission: 0.9,
         transparent: true,
         thickness: 1.0,
         envMapIntensity: 1.0,
@@ -229,59 +279,49 @@
         clearcoatRoughness: 0.1,
       });
 
-      // --- SEQUIN MATERIAL (High Metallic, Reflective) ---
       const materialSequin = new THREE.MeshStandardMaterial({
-        color: 0xffffff, // Base color will be overwritten by instance color
-        metalness: 1.0, // Super shiny
-        roughness: 0.1, // Almost mirror
+        color: 0xffffff,
+        metalness: 1.0,
+        roughness: 0.1,
         side: THREE.DoubleSide,
         emissive: 0x222222,
         emissiveIntensity: 0.2,
       });
 
-      // --- NEW SNOWFLAKE GENERATION ---
       function createSnowflakeTexture() {
         const canvas = document.createElement("canvas");
         canvas.width = 64;
         canvas.height = 64;
         const ctx = canvas.getContext("2d");
-
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 3;
         ctx.lineCap = "round";
         ctx.shadowBlur = 5;
-        ctx.shadowColor = "#aaddff"; // Blue glow
-
+        ctx.shadowColor = "#aaddff";
         ctx.translate(32, 32);
-
         for (let i = 0; i < 6; i++) {
           ctx.beginPath();
           ctx.moveTo(0, 0);
           ctx.lineTo(0, -26);
           ctx.stroke();
-
-          // branches
           ctx.beginPath();
           ctx.moveTo(0, -12);
           ctx.lineTo(-8, -18);
           ctx.stroke();
-
           ctx.beginPath();
           ctx.moveTo(0, -12);
           ctx.lineTo(8, -18);
           ctx.stroke();
-
           ctx.rotate(Math.PI / 3);
         }
         return new THREE.CanvasTexture(canvas);
       }
 
       const snowflakeTexture = createSnowflakeTexture();
-
       const materialSnowflake = new THREE.MeshStandardMaterial({
         map: snowflakeTexture,
         transparent: true,
-        alphaTest: 0.1, // Clip invisible parts
+        alphaTest: 0.1,
         side: THREE.DoubleSide,
         emissive: 0x4488ff,
         emissiveIntensity: 0.5,
@@ -290,164 +330,114 @@
       });
 
       // ------------------------------------------------------------------
-      // Data Management for Interaction
+      // Data Management
       // ------------------------------------------------------------------
       const particleData = [];
-
-      // ------------------------------------------------------------------
-      // The Tree Trunk
-      // ------------------------------------------------------------------
       const treeGroup = new THREE.Group();
       treeGroup.position.y = 2;
       treeGroup.scale.set(1.2, 1.2, 1.2);
       scene.add(treeGroup);
 
-      // 240% Size Increase
+      // Geometries
       const geoSphere = new THREE.IcosahedronGeometry(0.72, 1);
       const geoCube = new THREE.BoxGeometry(0.84, 0.84, 0.84);
       const geoTetra = new THREE.TetrahedronGeometry(0.84);
-
-      // NEW: 2D Geometries
       const geoDisc = new THREE.CircleGeometry(0.5, 32);
       const geoPlane = new THREE.PlaneGeometry(0.7, 0.7);
-
-      // --- SNOWFLAKE SIZE INCREASED 100% (0.9 -> 1.8) ---
       const geoSnowflake = new THREE.PlaneGeometry(1.8, 1.8);
-
-      // --- GLASS ORB GEOMETRY (Slightly smoother sphere) ---
       const geoGlassOrb = new THREE.SphereGeometry(0.65, 32, 32);
-
-      // --- SEQUIN GEOMETRIES (Resized to match 3D shapes) ---
       const geoSequinSquare = new THREE.PlaneGeometry(0.7, 0.7);
       const geoSequinRound = new THREE.CircleGeometry(0.4, 32);
 
-      // --- Shape Distribution Logic ---
-
-      const countSphere = 126;
-      const countDisc = 180;
-      const countCube = 35;
-      const countTetra = 35;
-      const countPlane = 50;
-      const countSnowflake = 100;
-
-      const countGlass = 60;
-
-      // INCREASE SEQUINS BY 50%
-      // Old: 130 each. New: 130 * 1.5 = 195
-      const countSequinSquare = 195;
-      const countSequinRound = 195;
-
+      // Meshes
       const meshSphere = new THREE.InstancedMesh(
         geoSphere,
         particleMaterial,
-        countSphere
+        126
       );
-      const meshCube = new THREE.InstancedMesh(
-        geoCube,
-        particleMaterial,
-        countCube
-      );
-      const meshTetra = new THREE.InstancedMesh(
-        geoTetra,
-        particleMaterial,
-        countTetra
-      );
-
-      // NEW: Instanced Meshes for 2D shapes
-      const meshDisc = new THREE.InstancedMesh(geoDisc, material2D, countDisc);
-      const meshPlane = new THREE.InstancedMesh(
-        geoPlane,
-        material2D,
-        countPlane
-      );
+      const meshCube = new THREE.InstancedMesh(geoCube, particleMaterial, 35);
+      const meshTetra = new THREE.InstancedMesh(geoTetra, particleMaterial, 35);
+      const meshDisc = new THREE.InstancedMesh(geoDisc, material2D, 180);
+      const meshPlane = new THREE.InstancedMesh(geoPlane, material2D, 50);
       const meshSnowflake = new THREE.InstancedMesh(
         geoSnowflake,
         materialSnowflake,
-        countSnowflake
+        100
       );
-
-      // NEW: Glass Orbs Mesh
-      const meshGlass = new THREE.InstancedMesh(
-        geoGlassOrb,
-        materialGlass,
-        countGlass
-      );
-
-      // NEW: Sequins Meshes (Square & Round)
+      const meshGlass = new THREE.InstancedMesh(geoGlassOrb, materialGlass, 60);
       const meshSequinSquare = new THREE.InstancedMesh(
         geoSequinSquare,
         materialSequin,
-        countSequinSquare
+        195
       );
       const meshSequinRound = new THREE.InstancedMesh(
         geoSequinRound,
         materialSequin,
-        countSequinRound
+        195
       );
 
       const dummy = new THREE.Object3D();
 
-      // Function for 3D blocks
+      // --- Helper to get random start position for assembly animation ---
+      function getRandomStartPosition() {
+        const range = 250; // Spread wide
+        return new THREE.Vector3(
+          (Math.random() - 0.5) * range,
+          (Math.random() - 0.5) * range + 20, // slightly higher bias
+          (Math.random() - 0.5) * range
+        );
+      }
+
       function fillInstancedMesh(mesh) {
-        // Use mesh.count to determine loop size
         for (let i = 0; i < mesh.count; i++) {
-          // --- Gradient Distribution Logic ---
           let y;
           while (true) {
             y = Math.random() * 20;
             const t = y / 20;
             const threshold = 1.0 - 0.65 * t;
-            if (Math.random() < threshold) {
-              break;
-            }
+            if (Math.random() < threshold) break;
           }
-
           const maxRadius = 8 * (1 - y / 20);
           const angle = Math.random() * Math.PI * 2;
           const radius = Math.random() * maxRadius;
-
           const x = Math.cos(angle) * radius;
           const z = Math.sin(angle) * radius;
 
-          dummy.position.set(x, y - 10, z);
+          // Target Position (The Tree)
+          const targetPos = new THREE.Vector3(x, y - 10, z);
+
+          // Start Position (Chaos)
+          const startPos = getRandomStartPosition();
+
+          dummy.position.copy(startPos); // Initialize at start position
           dummy.rotation.set(
             Math.random() * Math.PI,
             Math.random() * Math.PI,
             Math.random() * Math.PI
           );
 
-          // --- SIZE GRADIENT LOGIC ---
           const randomScale = 0.5 + Math.random() * 0.8;
           const heightFactor = 1.0 - (y / 20) * 0.5;
           const finalScale = randomScale * heightFactor;
 
           dummy.scale.set(finalScale, finalScale, finalScale);
           dummy.updateMatrix();
-
           mesh.setMatrixAt(i, dummy.matrix);
 
-          // --- Color Probability Logic (Original) ---
           const r = Math.random();
-          let baseColor;
-          if (r < 0.5) {
-            baseColor = colPureWhite;
-          } else if (r < 0.8) {
-            baseColor = colBlack;
-          } else {
-            baseColor = colDarkBlue;
-          }
-
+          let baseColor =
+            r < 0.5 ? colPureWhite : r < 0.8 ? colBlack : colDarkBlue;
           mesh.setColorAt(i, baseColor);
 
           particleData.push({
             mesh: mesh,
             index: i,
-            originalPosition: dummy.position.clone(),
-            currentPosition: dummy.position.clone(),
+            startPosition: startPos, // New Property
+            originalPosition: targetPos,
+            currentPosition: startPos.clone(),
             rotation: dummy.rotation.clone(),
             baseScale: finalScale,
             baseColor: baseColor.clone(),
-            velocity: new THREE.Vector3(),
           });
         }
         mesh.instanceMatrix.needsUpdate = true;
@@ -455,7 +445,6 @@
         treeGroup.add(mesh);
       }
 
-      // NEW Function for 2D shapes
       function fill2DInstancedMesh(mesh, isSnowflake = false) {
         for (let i = 0; i < mesh.count; i++) {
           let y;
@@ -463,20 +452,18 @@
             y = Math.random() * 20;
             const t = y / 20;
             const threshold = 1.0 - 0.65 * t;
-            if (Math.random() < threshold) {
-              break;
-            }
+            if (Math.random() < threshold) break;
           }
-
           const maxRadius = 8 * (1 - y / 20);
           const angle = Math.random() * Math.PI * 2;
           const radius = Math.random() * maxRadius;
-
           const x = Math.cos(angle) * radius;
           const z = Math.sin(angle) * radius;
 
-          dummy.position.set(x, y - 10, z);
-          // Random rotation
+          const targetPos = new THREE.Vector3(x, y - 10, z);
+          const startPos = getRandomStartPosition();
+
+          dummy.position.copy(startPos);
           dummy.rotation.set(
             Math.random() * Math.PI,
             Math.random() * Math.PI,
@@ -489,35 +476,27 @@
 
           dummy.scale.set(finalScale, finalScale, finalScale);
           dummy.updateMatrix();
-
           mesh.setMatrixAt(i, dummy.matrix);
 
-          // --- NEW COLOR LOGIC ---
           let baseColor;
           if (isSnowflake) {
             baseColor = Math.random() > 0.5 ? colPureWhite : colLightBlue;
           } else {
             const r = Math.random();
-            if (r < 0.4) {
-              baseColor = colPureWhite;
-            } else if (r < 0.7) {
-              baseColor = colGrey;
-            } else {
-              baseColor = colLightBlue;
-            }
+            baseColor =
+              r < 0.4 ? colPureWhite : r < 0.7 ? colGrey : colLightBlue;
           }
-
           mesh.setColorAt(i, baseColor);
 
           particleData.push({
             mesh: mesh,
             index: i,
-            originalPosition: dummy.position.clone(),
-            currentPosition: dummy.position.clone(),
+            startPosition: startPos,
+            originalPosition: targetPos,
+            currentPosition: startPos.clone(),
             rotation: dummy.rotation.clone(),
             baseScale: finalScale,
             baseColor: baseColor.clone(),
-            velocity: new THREE.Vector3(),
           });
         }
         mesh.instanceMatrix.needsUpdate = true;
@@ -525,7 +504,6 @@
         treeGroup.add(mesh);
       }
 
-      // Function specifically for Glass Orbs
       function fillGlassMesh(mesh) {
         for (let i = 0; i < mesh.count; i++) {
           let y;
@@ -533,19 +511,18 @@
             y = Math.random() * 20;
             const t = y / 20;
             const threshold = 1.0 - 0.65 * t;
-            if (Math.random() < threshold) {
-              break;
-            }
+            if (Math.random() < threshold) break;
           }
-
           const maxRadius = 8 * (1 - y / 20);
           const angle = Math.random() * Math.PI * 2;
           const radius = Math.random() * maxRadius;
-
           const x = Math.cos(angle) * radius;
           const z = Math.sin(angle) * radius;
 
-          dummy.position.set(x, y - 10, z);
+          const targetPos = new THREE.Vector3(x, y - 10, z);
+          const startPos = getRandomStartPosition();
+
+          dummy.position.copy(startPos);
           dummy.rotation.set(
             Math.random() * Math.PI,
             Math.random() * Math.PI,
@@ -558,25 +535,23 @@
 
           dummy.scale.set(finalScale, finalScale, finalScale);
           dummy.updateMatrix();
-
           mesh.setMatrixAt(i, dummy.matrix);
 
           particleData.push({
             mesh: mesh,
             index: i,
-            originalPosition: dummy.position.clone(),
-            currentPosition: dummy.position.clone(),
+            startPosition: startPos,
+            originalPosition: targetPos,
+            currentPosition: startPos.clone(),
             rotation: dummy.rotation.clone(),
             baseScale: finalScale,
-            baseColor: new THREE.Color(0xffffff), // Placeholder
-            velocity: new THREE.Vector3(),
+            baseColor: new THREE.Color(0xffffff),
           });
         }
         mesh.instanceMatrix.needsUpdate = true;
         treeGroup.add(mesh);
       }
 
-      // --- NEW FUNCTION: Fill Sequins with Variety ---
       function fillSequinMesh(mesh) {
         for (let i = 0; i < mesh.count; i++) {
           let y;
@@ -584,56 +559,50 @@
             y = Math.random() * 20;
             const t = y / 20;
             const threshold = 1.0 - 0.65 * t;
-            if (Math.random() < threshold) {
-              break;
-            }
+            if (Math.random() < threshold) break;
           }
-
           const maxRadius = 8 * (1 - y / 20);
           const angle = Math.random() * Math.PI * 2;
           const radius = Math.random() * maxRadius;
-
           const x = Math.cos(angle) * radius;
           const z = Math.sin(angle) * radius;
 
-          dummy.position.set(x, y - 10, z);
-          // Random rotation - sequins spin a lot
+          const targetPos = new THREE.Vector3(x, y - 10, z);
+          const startPos = getRandomStartPosition();
+
+          dummy.position.copy(startPos);
           dummy.rotation.set(
             Math.random() * Math.PI,
             Math.random() * Math.PI,
             Math.random() * Math.PI
           );
 
-          // --- SIZE MATCHING 3D SHAPES ---
           const randomScale = 0.5 + Math.random() * 0.8;
           const heightFactor = 1.0 - (y / 20) * 0.5;
           const finalScale = randomScale * heightFactor;
 
           dummy.scale.set(finalScale, finalScale, finalScale);
           dummy.updateMatrix();
-
           mesh.setMatrixAt(i, dummy.matrix);
 
-          // COLOR VARIETY: 20% Black, 80% Cold Palette
           let baseColor;
           if (Math.random() < 0.2) {
-            baseColor = colSequinBlack; // 20% Black
+            baseColor = colSequinBlack;
           } else {
             const colIndex = Math.floor(Math.random() * sequinColors.length);
-            baseColor = sequinColors[colIndex]; // 80% Random Cold
+            baseColor = sequinColors[colIndex];
           }
-
           mesh.setColorAt(i, baseColor);
 
           particleData.push({
             mesh: mesh,
             index: i,
-            originalPosition: dummy.position.clone(),
-            currentPosition: dummy.position.clone(),
+            startPosition: startPos,
+            originalPosition: targetPos,
+            currentPosition: startPos.clone(),
             rotation: dummy.rotation.clone(),
             baseScale: finalScale,
             baseColor: baseColor.clone(),
-            velocity: new THREE.Vector3(),
           });
         }
         mesh.instanceMatrix.needsUpdate = true;
@@ -641,29 +610,21 @@
         treeGroup.add(mesh);
       }
 
-      // Fill existing 3D shapes
       fillInstancedMesh(meshSphere);
       fillInstancedMesh(meshCube);
       fillInstancedMesh(meshTetra);
-
-      // Fill new 2D shapes
       fill2DInstancedMesh(meshDisc);
       fill2DInstancedMesh(meshPlane);
-      // Fill Snowflakes (pass true for isSnowflake)
       fill2DInstancedMesh(meshSnowflake, true);
-      // Fill Glass Orbs
       fillGlassMesh(meshGlass);
-      // Fill Sequins (Square & Round with variety)
       fillSequinMesh(meshSequinSquare);
       fillSequinMesh(meshSequinRound);
 
       // ------------------------------------------------------------------
-      // NEW: Independent Sparkle Layer
+      // Sparkles (Wait to activate)
       // ------------------------------------------------------------------
       const sparkleGroup = new THREE.Group();
       treeGroup.add(sparkleGroup);
-
-      // Create a soft glow texture for sparkles
       const sparkleCanvas = document.createElement("canvas");
       sparkleCanvas.width = 32;
       sparkleCanvas.height = 32;
@@ -675,55 +636,37 @@
       sCtx.fillStyle = sGrad;
       sCtx.fillRect(0, 0, 32, 32);
       const sparkleTexture = new THREE.CanvasTexture(sparkleCanvas);
-
       const sparkles = [];
-      const sparkleCount = 60; // Number of random flashes
+      const sparkleCount = 60;
 
       for (let i = 0; i < sparkleCount; i++) {
         const material = new THREE.SpriteMaterial({
           map: sparkleTexture,
           color: 0xffffff,
           transparent: true,
-          opacity: 0, // Start invisible
+          opacity: 0,
           blending: THREE.AdditiveBlending,
         });
         const sprite = new THREE.Sprite(material);
-
-        // Initial random position (hidden)
         sprite.position.set(0, -100, 0);
-        // INCREASED INITIAL SCALE (0.8 * 1.5 = 1.2)
         sprite.scale.set(1.2, 1.2, 1.2);
-
         sparkleGroup.add(sprite);
-
-        sparkles.push({
-          sprite: sprite,
-          active: false,
-          life: 0,
-          speed: 0,
-        });
+        sparkles.push({ sprite: sprite, active: false, life: 0, speed: 0 });
       }
 
-      function updateSparkles(delta) {
+      function updateSparkles(delta, isAssembled) {
+        if (!isAssembled) return; // Don't sparkle while assembling
         sparkles.forEach((s) => {
           if (!s.active) {
-            // Chance to activate
             if (Math.random() < 0.01) {
-              // 1% chance per frame to spawn
               s.active = true;
               s.life = 0;
-              s.speed = 1.0 + Math.random() * 2.0; // Random speed
-
-              // Random position within tree cone
+              s.speed = 1.0 + Math.random() * 2.0;
               const y = Math.random() * 20;
-              // Calculate base tree radius at this height
               const treeRadius = 8 * (1 - y / 20);
-              // Add extra range to create outer halo (Tree radius + 5 units)
               const maxR = treeRadius + 5.0;
-
               const r = Math.random() * maxR;
               const theta = Math.random() * Math.PI * 2;
-
               s.sprite.position.set(
                 Math.cos(theta) * r,
                 y - 10,
@@ -731,17 +674,12 @@
               );
             }
           } else {
-            // Animate lifecycle: Fade In -> Fade Out
             s.life += delta * s.speed;
-
-            // Simple sine wave for opacity: 0 -> 1 -> 0
-            // Life goes from 0 to PI
             if (s.life > Math.PI) {
               s.active = false;
               s.sprite.material.opacity = 0;
             } else {
               s.sprite.material.opacity = Math.sin(s.life);
-              // Slight scale pop - INCREASED BY 50%
               const scale = (0.5 + Math.sin(s.life) * 0.5) * 1.5;
               s.sprite.scale.set(scale, scale, scale);
             }
@@ -750,23 +688,21 @@
       }
 
       // ------------------------------------------------------------------
-      // The Star Dust Spiral (Replaces the Tube)
+      // Spiral Dust (Animated)
       // ------------------------------------------------------------------
       const spiralPoints = [];
       const spiralHeight = 22;
       const loops = 4.5;
       const pointsCount = 1500;
-
       for (let i = 0; i <= pointsCount; i++) {
         const t = i / pointsCount;
         const y = t * spiralHeight - 10;
         const r = 9 * (1 - t) + 0.5;
         const angle = t * Math.PI * 2 * loops;
-        const x = Math.cos(angle) * r;
-        const z = Math.sin(angle) * r;
-        spiralPoints.push(new THREE.Vector3(x, y, z));
+        spiralPoints.push(
+          new THREE.Vector3(Math.cos(angle) * r, y, Math.sin(angle) * r)
+        );
       }
-
       const spiralCurve = new THREE.CatmullRomCurve3(
         spiralPoints,
         false,
@@ -774,29 +710,40 @@
         0.1
       );
 
-      // --- New Particle Spiral Implementation ---
       const spiralDustGeo = new THREE.BufferGeometry();
-      const spiralDustCount = 4500; // High count for a dense "ring" look
+      const spiralDustCount = 4500;
       const spiralDustPos = new Float32Array(spiralDustCount * 3);
+
+      // Store Start and End positions for spiral particles
+      const spiralTargetPos = new Float32Array(spiralDustCount * 3);
+      const spiralStartPos = new Float32Array(spiralDustCount * 3);
 
       for (let i = 0; i < spiralDustCount; i++) {
         const t = i / spiralDustCount;
         const point = spiralCurve.getPoint(t);
-
-        // Add random spread to create volume (like a ribbon/star ring)
         const spread = 0.25;
-        // Random spherical offset
         const theta = Math.random() * Math.PI * 2;
         const phi = Math.random() * Math.PI;
         const offsetR = Math.random() * spread;
-
         const offsetX = offsetR * Math.sin(phi) * Math.cos(theta);
-        const offsetY = offsetR * Math.sin(phi) * Math.sin(theta) * 0.5; // Less vertical spread to look flatter
+        const offsetY = offsetR * Math.sin(phi) * Math.sin(theta) * 0.5;
         const offsetZ = offsetR * Math.cos(phi);
 
-        spiralDustPos[i * 3] = point.x + offsetX;
-        spiralDustPos[i * 3 + 1] = point.y + offsetY;
-        spiralDustPos[i * 3 + 2] = point.z + offsetZ;
+        // Target
+        spiralTargetPos[i * 3] = point.x + offsetX;
+        spiralTargetPos[i * 3 + 1] = point.y + offsetY;
+        spiralTargetPos[i * 3 + 2] = point.z + offsetZ;
+
+        // Start (Random Chaos)
+        const startP = getRandomStartPosition();
+        spiralStartPos[i * 3] = startP.x;
+        spiralStartPos[i * 3 + 1] = startP.y;
+        spiralStartPos[i * 3 + 2] = startP.z;
+
+        // Initialize current at start
+        spiralDustPos[i * 3] = startP.x;
+        spiralDustPos[i * 3 + 1] = startP.y;
+        spiralDustPos[i * 3 + 2] = startP.z;
       }
 
       spiralDustGeo.setAttribute(
@@ -804,37 +751,32 @@
         new THREE.BufferAttribute(spiralDustPos, 3)
       );
 
-      // Texture for the spiral particles (Soft circle)
       const ringCanvas = document.createElement("canvas");
       ringCanvas.width = 32;
       ringCanvas.height = 32;
       const rCtx = ringCanvas.getContext("2d");
       rCtx.beginPath();
       rCtx.arc(16, 16, 14, 0, Math.PI * 2);
-      rCtx.fillStyle = "#ffffff"; // Pure white
+      rCtx.fillStyle = "#ffffff";
       rCtx.fill();
-      // Add a slight blur/glow edge
       rCtx.shadowBlur = 4;
       rCtx.shadowColor = "white";
-
       const ringTexture = new THREE.CanvasTexture(ringCanvas);
-
       const spiralDustMat = new THREE.PointsMaterial({
         color: 0xffffff,
         map: ringTexture,
-        size: 0.2, // Small and fine
+        size: 0.2,
         transparent: true,
         opacity: 0.9,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         sizeAttenuation: true,
       });
-
       const spiralDustSystem = new THREE.Points(spiralDustGeo, spiralDustMat);
       treeGroup.add(spiralDustSystem);
 
       // ------------------------------------------------------------------
-      // The Star (ICE VERSION - UPDATED BLUE)
+      // The Star
       // ------------------------------------------------------------------
       function createStarShape(innerRadius, outerRadius, points) {
         const shape = new THREE.Shape();
@@ -848,54 +790,44 @@
         shape.closePath();
         return shape;
       }
-
       const starShape = createStarShape(0.6, 1.5, 8);
-
-      const extrudeSettings = {
+      const starGeo = new THREE.ExtrudeGeometry(starShape, {
         depth: 0.4,
         bevelEnabled: true,
         bevelThickness: 0.1,
         bevelSize: 0.05,
         bevelSegments: 4,
-      };
-
-      const starGeo = new THREE.ExtrudeGeometry(starShape, extrudeSettings);
+      });
       starGeo.center();
-
       const starMat = new THREE.MeshStandardMaterial({
-        color: 0x66bbff, // Stronger Ice Blue
-        emissive: 0x0066ff, // Deep Blue Glow
+        color: 0x66bbff,
+        emissive: 0x0066ff,
         emissiveIntensity: 0.8,
-        roughness: 0.2, // Smooth ice
-        metalness: 0.1, // Not metallic
+        roughness: 0.2,
+        metalness: 0.1,
         side: THREE.DoubleSide,
-        transparent: true, // Ice is see-through
+        transparent: true,
         opacity: 0.9,
       });
-
       const star = new THREE.Mesh(starGeo, starMat);
       star.position.set(0, 16.5, 0);
-      star.scale.set(1.2, 1.2, 1.2);
-
+      star.scale.set(0, 0, 0); // Start scale 0
       scene.add(star);
 
-      // Lighting for the Star (Ice Blue)
       const starKeyLight = new THREE.PointLight(0x66bbff, 2, 10);
       starKeyLight.position.set(2, 18, 5);
       scene.add(starKeyLight);
-
       const starRimLight = new THREE.PointLight(0xffffff, 1, 10);
       starRimLight.position.set(-2, 17, -5);
       scene.add(starRimLight);
 
-      // Halo - Ice Blue Gradient
       const canvas = document.createElement("canvas");
       canvas.width = 32;
       canvas.height = 32;
       const ctx = canvas.getContext("2d");
       const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-      gradient.addColorStop(0, "rgba(100, 200, 255, 0.9)"); // Brighter Blue Center
-      gradient.addColorStop(0.4, "rgba(50, 150, 255, 0.4)"); // Deep Blue Halo
+      gradient.addColorStop(0, "rgba(100, 200, 255, 0.9)");
+      gradient.addColorStop(0.4, "rgba(50, 150, 255, 0.4)");
       gradient.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, 32, 32);
@@ -910,25 +842,21 @@
       star.add(starGlow);
 
       // ------------------------------------------------------------------
-      // METEOR SYSTEM (FIXED: Independent Materials)
+      // Meteors & Ambient Dust
       // ------------------------------------------------------------------
-      // Create a long thin plane with a gradient for the tail
       const meteorLen = 15;
       const meteorGeo = new THREE.PlaneGeometry(meteorLen, 0.4);
-      // Create gradient texture
       const mCanvas = document.createElement("canvas");
       mCanvas.width = 128;
       mCanvas.height = 32;
       const mCtx = mCanvas.getContext("2d");
       const mGrad = mCtx.createLinearGradient(0, 0, 128, 0);
-      mGrad.addColorStop(0, "rgba(255, 255, 255, 0)"); // Tail (Transparent)
-      mGrad.addColorStop(0.8, "rgba(255, 255, 255, 0.5)"); // Mid body
-      mGrad.addColorStop(1, "rgba(255, 255, 255, 1)"); // Head (White)
+      mGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
+      mGrad.addColorStop(0.8, "rgba(255, 255, 255, 0.5)");
+      mGrad.addColorStop(1, "rgba(255, 255, 255, 1)");
       mCtx.fillStyle = mGrad;
       mCtx.fillRect(0, 0, 128, 32);
-
       const meteorTexture = new THREE.CanvasTexture(mCanvas);
-
       const meteorMaterial = new THREE.MeshBasicMaterial({
         map: meteorTexture,
         transparent: true,
@@ -936,73 +864,43 @@
         blending: THREE.AdditiveBlending,
         side: THREE.DoubleSide,
       });
-
-      // Create a pool of Meteors
-      const maxMeteors = 5;
       const meteorPool = [];
-      for (let i = 0; i < maxMeteors; i++) {
-        // FIX: Clone material so each meteor has independent opacity
+      for (let i = 0; i < 5; i++) {
         const instanceMat = meteorMaterial.clone();
         const mesh = new THREE.Mesh(meteorGeo, instanceMat);
-        mesh.position.set(0, -100, 0); // Hide initially
+        mesh.position.set(0, -100, 0);
         scene.add(mesh);
-        meteorPool.push({
-          mesh: mesh,
-          active: false,
-          speed: 0,
-        });
+        meteorPool.push({ mesh: mesh, active: false, speed: 0 });
       }
-
-      // Meteor Spawn Controller
-      const meteorControl = {
-        timer: 0,
-        nextSpawn: Math.random() * 5 + 5, // 5 to 10 seconds
-      };
+      const meteorControl = { timer: 0, nextSpawn: Math.random() * 5 + 5 };
 
       function updateMeteor(delta) {
-        // 1. Check if we should spawn new meteors
         meteorControl.timer += delta;
         if (meteorControl.timer > meteorControl.nextSpawn) {
           meteorControl.timer = 0;
           meteorControl.nextSpawn = Math.random() * 5 + 5;
-
-          // Determine how many to spawn (1 to 3)
           const countToSpawn = Math.floor(Math.random() * 3) + 1;
-
           let spawned = 0;
-          // Loop through pool to find inactive ones
           for (let i = 0; i < meteorPool.length; i++) {
             if (!meteorPool[i].active && spawned < countToSpawn) {
               const m = meteorPool[i];
               m.active = true;
-              m.speed = 30 + Math.random() * 20; // Random speed 30-50
-
-              // Random Start Position (Top Right area)
-              // Spread them out a bit more
+              m.speed = 30 + Math.random() * 20;
               const startX = 30 + Math.random() * 40;
               const startY = 25 + Math.random() * 20;
-              const startZ = -30 - Math.random() * 20; // Depth variation
-
+              const startZ = -30 - Math.random() * 20;
               m.mesh.position.set(startX, startY, startZ);
-
-              // Angle: Top-Right to Bottom-Left (approx -30 degrees)
-              // Add slight angle variation
-              const angle = Math.PI / 6 + Math.PI + (Math.random() * 0.2 - 0.1);
-              m.mesh.rotation.z = angle;
-              m.mesh.material.opacity = 1; // Ensure opacity is reset to 1
-
+              m.mesh.rotation.z =
+                Math.PI / 6 + Math.PI + (Math.random() * 0.2 - 0.1);
+              m.mesh.material.opacity = 1;
               spawned++;
             }
           }
         }
-
-        // 2. Update active meteors
         meteorPool.forEach((m) => {
           if (m.active) {
             m.mesh.position.x -= m.speed * delta * 1.5;
             m.mesh.position.y -= m.speed * delta * 0.8;
-
-            // Fade out near end or if out of bounds
             if (m.mesh.position.y < -30 || m.mesh.position.x < -60) {
               m.active = false;
               m.mesh.material.opacity = 0;
@@ -1011,29 +909,19 @@
         });
       }
 
-      // ------------------------------------------------------------------
-      // Lighting
-      // ------------------------------------------------------------------
-      // Moderate Ambient Light so blacks aren't washed out
       const ambientLight = new THREE.AmbientLight(0x888888, 1.0);
       scene.add(ambientLight);
-
       const backLight = new THREE.SpotLight(0xaaccff, 5);
       backLight.position.set(0, 10, -20);
       backLight.lookAt(0, 0, 0);
       scene.add(backLight);
-
       const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
       dirLight.position.set(10, 10, 10);
       scene.add(dirLight);
-
       const blueLight = new THREE.PointLight(0x0044ff, 1.5, 20);
       blueLight.position.set(0, -5, 5);
       scene.add(blueLight);
 
-      // ------------------------------------------------------------------
-      // Ambient Dust
-      // ------------------------------------------------------------------
       const dustGeometry = new THREE.BufferGeometry();
       const dustCount = 1500;
       const dustPos = new Float32Array(dustCount * 3);
@@ -1065,7 +953,7 @@
       scene.add(dustSystem);
 
       // ------------------------------------------------------------------
-      // Interactions (Scattering / Repulsion)
+      // Interactions
       // ------------------------------------------------------------------
       const raycaster = new THREE.Raycaster();
       const mouse = new THREE.Vector2(1000, 1000);
@@ -1077,7 +965,6 @@
         mouse.x = (x / window.innerWidth) * 2 - 1;
         mouse.y = -(y / window.innerHeight) * 2 + 1;
       }
-
       document.addEventListener("mousemove", (e) => {
         updateMouse(e.clientX, e.clientY);
         if (isDragging) {
@@ -1088,7 +975,6 @@
           previousMousePosition = { x: e.offsetX, y: e.offsetY };
         }
       });
-
       document.addEventListener("mousedown", (e) => {
         isDragging = true;
         previousMousePosition = { x: e.offsetX, y: e.offsetY };
@@ -1096,7 +982,6 @@
       document.addEventListener("mouseup", () => {
         isDragging = false;
       });
-
       document.addEventListener(
         "touchmove",
         (e) => {
@@ -1130,50 +1015,66 @@
       });
 
       // ------------------------------------------------------------------
-      // Animation Loop
+      // Animation Loop with Assembly
       // ------------------------------------------------------------------
       const clock = new THREE.Clock();
       const _inverseMatrix = new THREE.Matrix4();
       const _ray = new THREE.Ray();
       const _tempVec = new THREE.Vector3();
 
+      // ASSEMBLY VARS
+      let assemblyTime = 0;
+      const assemblyDuration = 4.0; // Seconds to assemble
+      let isAssembled = false;
+
       function animate() {
         requestAnimationFrame(animate);
         const delta = clock.getDelta();
         const time = Date.now() * 0.001;
 
-        // Update Aurora Time
-        auroraUniforms.uTime.value = time;
+        // Assembly Logic
+        assemblyTime += delta;
+        let progress = Math.min(assemblyTime / assemblyDuration, 1.0);
+        // Easing: Cubic Out (Fast start, slow end)
+        progress = 1 - Math.pow(1 - progress, 3);
 
-        if (!isDragging) {
-          treeGroup.rotation.y += rotationSpeed;
+        if (progress >= 1.0 && !isAssembled) {
+          isAssembled = true;
+          document.getElementById("greeting").style.opacity = "1";
         }
 
-        // Animate Star Rotation (To show 3D effect)
+        // Aurora
+        auroraUniforms.uTime.value = time;
+
+        if (!isDragging) treeGroup.rotation.y += rotationSpeed;
+
+        // Animate Star (Scale up at end of assembly)
         star.rotation.y = time * 0.5;
         star.rotation.z = Math.sin(time * 0.5) * 0.1;
+        const starTargetScale = isAssembled
+          ? 1.2
+          : progress > 0.8
+          ? (progress - 0.8) * 6
+          : 0;
+        star.scale.set(starTargetScale, starTargetScale, starTargetScale);
 
-        // --- Sparkle Animation ---
-        updateSparkles(delta);
-
-        // --- Meteor Animation ---
+        updateSparkles(delta, isAssembled);
         updateMeteor(delta);
 
-        // --- Scattering Logic ---
+        // --- Interaction + Assembly Logic ---
         raycaster.setFromCamera(mouse, camera);
-
         _inverseMatrix.copy(treeGroup.matrixWorld).invert();
         _ray.copy(raycaster.ray).applyMatrix4(_inverseMatrix);
 
-        let needsUpdateSphere = false;
-        let needsUpdateCube = false;
-        let needsUpdateTetra = false;
-        let needsUpdateDisc = false;
-        let needsUpdatePlane = false;
-        let needsUpdateSnowflake = false;
-        let needsUpdateGlass = false;
-        let needsUpdateSequinSquare = false;
-        let needsUpdateSequinRound = false;
+        let needsUpdateSphere = false,
+          needsUpdateCube = false,
+          needsUpdateTetra = false,
+          needsUpdateDisc = false,
+          needsUpdatePlane = false,
+          needsUpdateSnowflake = false,
+          needsUpdateGlass = false,
+          needsUpdateSequinSquare = false,
+          needsUpdateSequinRound = false;
 
         const interactionRadius = 3.5;
         const repulsionStrength = 5.0;
@@ -1181,29 +1082,30 @@
         for (let i = 0; i < particleData.length; i++) {
           const p = particleData[i];
 
-          _ray.closestPointToPoint(p.originalPosition, _tempVec);
-          const distSq = p.originalPosition.distanceToSquared(_tempVec);
+          // 1. Calculate Base Position based on Assembly Progress
+          // Interpolate from Start (Chaos) to Original (Tree)
+          const basePos = new THREE.Vector3().lerpVectors(
+            p.startPosition,
+            p.originalPosition,
+            progress
+          );
 
-          let targetX, targetY, targetZ;
+          // 2. Apply Interaction Logic on top of Base Position
+          _ray.closestPointToPoint(basePos, _tempVec);
+          const distSq = basePos.distanceToSquared(_tempVec);
+          let targetX = basePos.x,
+            targetY = basePos.y,
+            targetZ = basePos.z;
 
-          if (distSq < interactionRadius * interactionRadius) {
-            // Repel
+          if (isAssembled && distSq < interactionRadius * interactionRadius) {
             const dir = new THREE.Vector3()
-              .subVectors(p.originalPosition, _tempVec)
+              .subVectors(basePos, _tempVec)
               .normalize();
             const dist = Math.sqrt(distSq);
             const force = (1 - dist / interactionRadius) * repulsionStrength;
-
-            targetX = p.originalPosition.x + dir.x * force;
-            targetY = p.originalPosition.y + dir.y * force;
-            targetZ = p.originalPosition.z + dir.z * force;
-
-            // Interaction: Position only, color is NOT changed
-          } else {
-            // Return
-            targetX = p.originalPosition.x;
-            targetY = p.originalPosition.y;
-            targetZ = p.originalPosition.z;
+            targetX += dir.x * force;
+            targetY += dir.y * force;
+            targetZ += dir.z * force;
           }
 
           const smoothFactor = delta * 5;
@@ -1211,11 +1113,13 @@
           p.currentPosition.y += (targetY - p.currentPosition.y) * smoothFactor;
           p.currentPosition.z += (targetZ - p.currentPosition.z) * smoothFactor;
 
-          const hasMoved =
-            p.currentPosition.distanceToSquared(p.originalPosition) > 0.001 ||
-            distSq < interactionRadius * interactionRadius;
+          // Always update during assembly, or if interaction happens
+          const needsUpdate =
+            progress < 1.0 ||
+            distSq < interactionRadius * interactionRadius ||
+            p.currentPosition.distanceToSquared(basePos) > 0.01;
 
-          if (hasMoved) {
+          if (needsUpdate || !isAssembled) {
             dummy.position.copy(p.currentPosition);
             dummy.rotation.copy(p.rotation);
             dummy.rotation.x += time * 0.5;
@@ -1237,7 +1141,6 @@
           }
         }
 
-        // Apply Matrix Updates (Position/Rotation)
         if (needsUpdateSphere) meshSphere.instanceMatrix.needsUpdate = true;
         if (needsUpdateCube) meshCube.instanceMatrix.needsUpdate = true;
         if (needsUpdateTetra) meshTetra.instanceMatrix.needsUpdate = true;
@@ -1251,7 +1154,33 @@
         if (needsUpdateSequinRound)
           meshSequinRound.instanceMatrix.needsUpdate = true;
 
-        // --- Dust Animation ---
+        // --- Spiral Dust Assembly ---
+        const sPosArr = spiralDustSystem.geometry.attributes.position.array;
+        for (let i = 0; i < spiralDustCount; i++) {
+          const ix = i * 3;
+          const iy = i * 3 + 1;
+          const iz = i * 3 + 2;
+
+          // Interpolate Spiral Points
+          sPosArr[ix] = THREE.MathUtils.lerp(
+            spiralStartPos[ix],
+            spiralTargetPos[ix],
+            progress
+          );
+          sPosArr[iy] = THREE.MathUtils.lerp(
+            spiralStartPos[iy],
+            spiralTargetPos[iy],
+            progress
+          );
+          sPosArr[iz] = THREE.MathUtils.lerp(
+            spiralStartPos[iz],
+            spiralTargetPos[iz],
+            progress
+          );
+        }
+        spiralDustSystem.geometry.attributes.position.needsUpdate = true;
+
+        // --- Ambient Dust Animation ---
         const dustPosArr = dustSystem.geometry.attributes.position.array;
         for (let i = 0; i < dustCount; i++) {
           dustPosArr[i * 3 + 1] -= dustSpeed[i].y;
@@ -1261,9 +1190,7 @@
         }
         dustSystem.geometry.attributes.position.needsUpdate = true;
 
-        // --- Star Pulse ---
         starGlow.material.opacity = 0.5 + Math.sin(time * 2) * 0.2;
-
         renderer.render(scene, camera);
       }
 
@@ -1274,8 +1201,6 @@
       });
 
       document.getElementById("loading").style.display = "none";
-      // Reveal greeting
-      document.getElementById("greeting").style.opacity = "1";
       animate();
     </script>
   </body>
